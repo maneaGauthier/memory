@@ -52,33 +52,34 @@ jobs:
 
   # 4.3 — PUSH : pousser sur Docker Hub
   push-memory-2026:
-    runs-on: self-hosted
-    needs: build-memory-2026
-    steps:
-      - name: Sanity check secrets
-        shell: powershell
-        run: |
-          if (-not "${{ secrets.DOCKERHUB_USERNAME }}") { throw "Secret DOCKERHUB_USERNAME vide ou manquant" }
-          if (-not "${{ secrets.DOCKERHUB_TOKEN }}")    { throw "Secret DOCKERHUB_TOKEN vide ou manquant" }
-          Write-Host "Secrets présents "
+  runs-on: self-hosted
+  needs: build-memory-2026
+  steps:
+    - name: Sanity check secrets
+      shell: powershell
+      run: |
+        if (-not "${{ secrets.DOCKERHUB_USERNAME }}") { throw "Secret DOCKERHUB_USERNAME vide ou manquant" }
+        if (-not "${{ secrets.DOCKERHUB_TOKEN }}")    { throw "Secret DOCKERHUB_TOKEN vide ou manquant" }
+        Write-Host "Secrets présents "
 
-      - name: Docker login (robuste, via fichier ASCII)
-        shell: powershell
-        run: |
-          $u = "${{ secrets.DOCKERHUB_USERNAME }}".Trim().ToLower()
-          $t = "${{ secrets.DOCKERHUB_TOKEN }}".Trim()
-          $file = Join-Path $env:RUNNER_TEMP "dh_token.txt"
-          [System.IO.File]::WriteAllText($file, $t, [System.Text.Encoding]::ASCII)
-          docker logout 2>$null
-          docker login -u $u --password-stdin < $file
-          Remove-Item $file -Force
-          docker info | Select-String -SimpleMatch "Username: $u" | Out-Host
+    - name: Docker login (via cmd + fichier ASCII)
+      shell: powershell
+      run: |
+        $u  = "${{ secrets.DOCKERHUB_USERNAME }}".Trim().ToLower()
+        $t  = "${{ secrets.DOCKERHUB_TOKEN }}".Trim()
+        $tf = Join-Path $env:RUNNER_TEMP "dh_token.txt"
+        [System.IO.File]::WriteAllText($tf, $t, [System.Text.Encoding]::ASCII)
+        # on utilise cmd.exe pour interpréter la redirection "<"
+        cmd /c "docker logout 1>nul 2>nul & docker login -u $u --password-stdin < ""$tf"""
+        Remove-Item $tf -Force
+        docker info | Select-String -SimpleMatch "Username: $u" | Out-Host
 
-      - name: Docker push
-        shell: powershell
-        run: |
-          $u = "${{ secrets.DOCKERHUB_USERNAME }}".Trim().ToLower()
-          docker push "$u/memory-2026:latest"
+    - name: Docker push
+      shell: powershell
+      run: |
+        $u = "${{ secrets.DOCKERHUB_USERNAME }}".Trim().ToLower()
+        docker push "$u/memory-2026:latest"
+
 
   # 4.4 — DEPLOY : SSH vers ta machine, pull & run en 80:80
   deploy-memory-2026:
