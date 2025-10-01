@@ -1,25 +1,9 @@
-name: verify-runner
-on:
-  workflow_dispatch:
-  push:
-    branches: [develop]
-
 jobs:
   ping:
-    runs-on: [self-hosted, Windows, X64]
+    runs-on: self-hosted
     steps:
       - name: Print env
         shell: powershell
         run: |
           Write-Host "Runner OK"
           Write-Host "User: $env:USERNAME"
-          Write-Host "PWD: $pwd"
-
-      - name: Check Docker (optional)
-        shell: powershell
-        run: |
-          if (Get-Command docker -ErrorAction SilentlyContinue) {
-            docker version
-          } else {
-            Write-Host "Docker not found on runner (ok for this test)"
-          }
