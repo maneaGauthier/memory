@@ -11,8 +11,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Run "file" on JPGs via Debian (inside Docker)
+        shell: powershell
         run: |
-          docker run --rm -v "$PWD:/work" -w /work debian:stable-slim bash -lc '
+          # Chemin du repo (converti en / pour Docker)
+          $work = "${env:GITHUB_WORKSPACE}".Replace('\','/')
+          docker run --rm -v "$work:/work" -w /work debian:stable-slim bash -lc '
             set -e
             apt-get update >/dev/null && apt-get install -y file >/dev/null
             count=$(find . -type f \( -iname "*.jpg" -o -iname "*.jpeg" \) | wc -l)
