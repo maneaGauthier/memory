@@ -1,39 +1,35 @@
 name: memory-2026
-
 on:
   push:
     branches: [develop]
-
 jobs:
   # 4.1 — TEST : exécuter "file" sur tous les JPG/JPEG
   test-memory-2026:
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
-
       - name: Create test script (LF only)
         shell: powershell
         run: |
           $lines = @(
-            '#!/usr/bin/env bash'
-            'set -euo pipefail'
-            'export DEBIAN_FRONTEND=noninteractive'
-            'apt-get update >/dev/null'
-            'apt-get install -y file >/dev/null'
-            'shopt -s globstar nullglob'
-            'files=(**/*.jpg **/*.jpeg)'
-            'if [ ${#files[@]} -eq 0 ]; then'
-            '  echo "Aucun .jpg/.jpeg"'
-            '  exit 0'
-            'fi'
-            'for f in "${files[@]}"; do'
-            '  file "$f"'
+            '#!/usr/bin/env bash',
+            'set -euo pipefail',
+            'export DEBIAN_FRONTEND=noninteractive',
+            'apt-get update >/dev/null',
+            'apt-get install -y file >/dev/null',
+            'shopt -s globstar nullglob',
+            'files=(**/*.jpg **/*.jpeg)',
+            'if [ ${#files[@]} -eq 0 ]; then',
+            '  echo "Aucun .jpg/.jpeg"',
+            '  exit 0',
+            'fi',
+            'for f in "${files[@]}"; do',
+            '  file "$f"',
             'done'
           )
           $path = Join-Path $env:GITHUB_WORKSPACE 'test_jpgs.sh'
           $content = ($lines -join "`n")   # LF uniquement
           [System.IO.File]::WriteAllText($path, $content, (New-Object System.Text.UTF8Encoding($false)))
-
       - name: Run test script inside Debian (with "file")
         shell: powershell
         run: |
@@ -52,34 +48,31 @@ jobs:
 
   # 4.3 — PUSH : pousser sur Docker Hub
   push-memory-2026:
-  runs-on: self-hosted
-  needs: build-memory-2026
-  steps:
-    - name: Sanity check secrets
-      shell: powershell
-      run: |
-        if (-not "${{ secrets.DOCKERHUB_USERNAME }}") { throw "Secret DOCKERHUB_USERNAME vide ou manquant" }
-        if (-not "${{ secrets.DOCKERHUB_TOKEN }}")    { throw "Secret DOCKERHUB_TOKEN vide ou manquant" }
-        Write-Host "Secrets présents "
-
-    - name: Docker login (via cmd + fichier ASCII)
-      shell: powershell
-      run: |
-        $u  = "${{ secrets.DOCKERHUB_USERNAME }}".Trim().ToLower()
-        $t  = "${{ secrets.DOCKERHUB_TOKEN }}".Trim()
-        $tf = Join-Path $env:RUNNER_TEMP "dh_token.txt"
-        [System.IO.File]::WriteAllText($tf, $t, [System.Text.Encoding]::ASCII)
-        # on utilise cmd.exe pour interpréter la redirection "<"
-        cmd /c "docker logout 1>nul 2>nul & docker login -u $u --password-stdin < ""$tf"""
-        Remove-Item $tf -Force
-        docker info | Select-String -SimpleMatch "Username: $u" | Out-Host
-
-    - name: Docker push
-      shell: powershell
-      run: |
-        $u = "${{ secrets.DOCKERHUB_USERNAME }}".Trim().ToLower()
-        docker push "$u/memory-2026:latest"
-
+    runs-on: self-hosted
+    needs: build-memory-2026
+    steps:
+      - name: Sanity check secrets
+        shell: powershell
+        run: |
+          if (-not "${{ secrets.DOCKERHUB_USERNAME }}") { throw "Secret DOCKERHUB_USERNAME vide ou manquant" }
+          if (-not "${{ secrets.DOCKERHUB_TOKEN }}")    { throw "Secret DOCKERHUB_TOKEN vide ou manquant" }
+          Write-Host "Secrets présents"
+      - name: Docker login (via cmd + fichier ASCII)
+        shell: powershell
+        run: |
+          $u  = "${{ secrets.DOCKERHUB_USERNAME }}".Trim().ToLower()
+          $t  = "${{ secrets.DOCKERHUB_TOKEN }}".Trim()
+          $tf = Join-Path $env:RUNNER_TEMP "dh_token.txt"
+          [System.IO.File]::WriteAllText($tf, $t, [System.Text.Encoding]::ASCII)
+          # on utilise cmd.exe pour interpréter la redirection "<"
+          cmd /c "docker logout 1>nul 2>nul & docker login -u $u --password-stdin < ""$tf"""
+          Remove-Item $tf -Force
+          docker info | Select-String -SimpleMatch "Username: $u" | Out-Host
+      - name: Docker push
+        shell: powershell
+        run: |
+          $u = "${{ secrets.DOCKERHUB_USERNAME }}".Trim().ToLower()
+          docker push "$u/memory-2026:latest"
 
   # 4.4 — DEPLOY : SSH vers ta machine, pull & run en 80:80
   deploy-memory-2026:
@@ -94,7 +87,6 @@ jobs:
           New-Item -ItemType Directory -Force "$HOME\.ssh" | Out-Null
           Set-Content -Path "$HOME\.ssh\id_rsa" -Value $env:SSH_PRIVATE_KEY -NoNewline
           icacls "$HOME\.ssh\id_rsa" /inheritance:r /grant:r "$env:USERNAME:(R)" | Out-Null
-
       - name: Deploy to target via SSH
         shell: powershell
         env:
@@ -103,5 +95,5 @@ jobs:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
         run: |
           $image  = "$env:DOCKERHUB_USERNAME/memory-2026:latest"
-          $remote = "docker pull $image; docker ps -aq -f name=^memory-2026$ | % { docker rm -f `$_ }; docker run -d --name memory-2026 -p 80:80 $image"
+          $remote = "docker pull $image; docker ps -aq -f name=^memory-2026$ | xargs -r docker rm -f; docker run -d --name memory-2026 -p 80:80 $image"
           ssh -o StrictHostKeyChecking=no "$env:SSH_USER@$env:SSH_HOST" "$remote"
