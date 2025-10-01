@@ -8,7 +8,7 @@ jobs:
   # 4.1 - Test: exécuter "file" sur les JPG
   # (on utilise un conteneur Debian pour avoir l'outil 'file' même sous Windows)
   test-memory-2026:
-    runs-on: self-hosted
+    runs-on: [self-hosted, Windows, X64]
     steps:
       - uses: actions/checkout@v4
       - name: Run "file" on JPGs via Debian
@@ -29,7 +29,7 @@ jobs:
 
   # 4.2 - Build: construire l'image <username>/memory-2026
   build-memory-2026:
-    runs-on: self-hosted
+    runs-on: [self-hosted, Windows, X64]
     needs: test-memory-2026
     steps:
       - uses: actions/checkout@v4
@@ -38,7 +38,7 @@ jobs:
 
   # 4.3 - Push: pousser sur Docker Hub avec tes identifiants
   push-memory-2026:
-    runs-on: self-hosted
+    runs-on: [self-hosted, Windows, X64]
     needs: build-memory-2026
     steps:
       - name: Docker login
@@ -48,7 +48,7 @@ jobs:
 
   # 4.4 - Deploy: SSH sur TA machine (Windows local), pull & run en 80:80
   deploy-memory-2026:
-    runs-on: self-hosted
+    runs-on: [self-hosted, Windows, X64]
     needs: push-memory-2026
     steps:
       - name: Setup SSH key
