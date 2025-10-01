@@ -1,19 +1,17 @@
 name: memory-2026
-
 on:
   push:
     branches: [develop]
-
 jobs:
   # 4.1 — TEST : exécuter "file" sur tous les JPG/JPEG
-    test-memory-2026:
+  test-memory-2026:
     name: Test Memory 2026
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v3
-
       - name: Test all JPEG files
-        run: file --mime-type ./html/**/*.jpg | grep -v image/jpeg && exit 1 || exit 0
+        run: file --mime-type ./html/**/*.jpg | grep -v "image/jpeg" && exit 1 || exit 0
+
   # 4.2 — BUILD : construire l'image <username>/memory-2026:latest
   build-memory-2026:
     runs-on: self-hosted
