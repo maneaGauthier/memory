@@ -5,7 +5,6 @@ on:
     branches: [develop]
 
 jobs:
-  # 4.1 — TEST : exécuter "file" sur tous les JPG/JPEG
   test-memory-2026:
     runs-on: self-hosted
     steps:
@@ -16,16 +15,14 @@ jobs:
           # Chemin du repo pour Docker (slashes Unix)
           $work = $env:GITHUB_WORKSPACE -replace '\\','/'
 
-          # Lance Debian et exécute 'file' sur tous les JPG/JPEG
-          docker run --rm --mount "type=bind,src=$work,dst=/work" -w /work debian:stable-slim bash -lc @'
-            set -e
-            apt-get update >/dev/null
-            apt-get install -y file findutils >/dev/null
-            count=$(find . -type f \( -iname "*.jpg" -o -iname "*.jpeg" \) | wc -l)
-            if [ "$count" -eq 0 ]; then echo "Aucun .jpg/.jpeg"; exit 0; fi
+          docker run --rm --mount "type=bind,src=$work,dst=/work" -w /work debian:stable-slim bash -lc '
+            set -e; export DEBIAN_FRONTEND=noninteractive;
+            apt-get update >/dev/null && apt-get install -y file findutils >/dev/null;
+            count=$(find . -type f \( -iname "*.jpg" -o -iname "*.jpeg" \) | wc -l);
+            if [ "$count" -eq 0 ]; then echo "Aucun .jpg/.jpeg"; exit 0; fi;
             find . -type f \( -iname "*.jpg" -o -iname "*.jpeg" \) -print0 | xargs -0 file
-          '@
-
+          '
+          
   # 4.2 — BUILD : construire l'image <username>/memory-2026:latest
   build-memory-2026:
     runs-on: self-hosted
