@@ -11,31 +11,30 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # On écrit un script bash (LF uniquement) puis on l'exécute dans Debian
       - name: Create test script (LF only)
         shell: powershell
         run: |
-          $script = @'
-#!/usr/bin/env bash
-set -euo pipefail
-export DEBIAN_FRONTEND=noninteractive
-apt-get update >/dev/null
-apt-get install -y file findutils >/dev/null
-shopt -s globstar nullglob
-files=(**/*.jpg **/*.jpeg)
-if [ ${#files[@]} -eq 0 ]; then
-  echo "Aucun .jpg/.jpeg"
-  exit 0
-fi
-for f in "${files[@]}"; do
-  file "$f"
-done
-'@
-          $script = $script -replace "`r",""        # enlève CR pour éviter ^M
-          $path = Join-Path $env:GITHUB_WORKSPACE "test_jpgs.sh"
-          [System.IO.File]::WriteAllText($path, $script, (New-Object System.Text.UTF8Encoding($false)))
+          $lines = @(
+            '#!/usr/bin/env bash'
+            'set -euo pipefail'
+            'export DEBIAN_FRONTEND=noninteractive'
+            'apt-get update >/dev/null'
+            'apt-get install -y file >/dev/null'
+            'shopt -s globstar nullglob'
+            'files=(**/*.jpg **/*.jpeg)'
+            'if [ ${#files[@]} -eq 0 ]; then'
+            '  echo "Aucun .jpg/.jpeg"'
+            '  exit 0'
+            'fi'
+            'for f in "${files[@]}"; do'
+            '  file "$f"'
+            'done'
+          )
+          $path = Join-Path $env:GITHUB_WORKSPACE 'test_jpgs.sh'
+          $content = ($lines -join "`n")          # LF uniquement
+          [System.IO.File]::WriteAllText($path, $content, (New-Object System.Text.UTF8Encoding($false)))
 
-      - name: Run test script inside Debian (with 'file')
+      - name: Run test script inside Debian (with "file")
         shell: powershell
         run: |
           $work = $env:GITHUB_WORKSPACE -replace '\\','/'
@@ -89,6 +88,5 @@ done
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
         run: |
           $image  = "$env:DOCKERHUB_USERNAME/memory-2026:latest"
-          # commande PowerShell robuste côté distant : supprime l'ancien conteneur s'il existe puis lance le nouveau
           $remote = "docker pull $image; docker ps -aq -f name=^memory-2026$ | % { docker rm -f `$_ }; docker run -d --name memory-2026 -p 80:80 $image"
           ssh -o StrictHostKeyChecking=no "$env:SSH_USER@$env:SSH_HOST" "$remote"
