@@ -13,10 +13,10 @@ jobs:
       - name: Run "file" on JPGs via Debian (inside Docker)
         shell: powershell
         run: |
-          # Chemin du repo pour Docker (slashes Unix)
+         
           $work = $env:GITHUB_WORKSPACE -replace '\\','/'
 
-          # Script bash en UNE SEULE LIGNE (évite les CRLF côté Windows)
+          
           $cmd = 'set -e; export DEBIAN_FRONTEND=noninteractive; apt-get update >/dev/null && apt-get install -y file findutils >/dev/null; count=$(find . -type f \( -iname "*.jpg" -o -iname "*.jpeg" \) | wc -l); if [ "$count" -eq 0 ]; then echo "Aucun .jpg/.jpeg"; exit 0; fi; find . -type f \( -iname "*.jpg" -o -iname "*.jpeg" \) -print0 | xargs -0 file'
 
           docker run --rm --mount "type=bind,src=$work,dst=/work" -w /work debian:stable-slim bash -lc $cmd
