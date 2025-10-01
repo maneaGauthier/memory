@@ -1,3 +1,10 @@
+name: verify-runner
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [develop]
+
 jobs:
   ping:
     runs-on: self-hosted
