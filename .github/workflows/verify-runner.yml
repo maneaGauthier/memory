@@ -1,8 +1,12 @@
 name: verify-runner
-on: [workflow_dispatch]
+on:
+  workflow_dispatch:
+  push:
+    branches: [develop]
+
 jobs:
   ping:
     runs-on: [self-hosted, Windows, X64]
     steps:
-      - run: 'Write-Host "Runner OK. User:" $env:USERNAME'  # PowerShell par défaut sur Windows
+      - run: 'Write-Host "Runner OK. User: $env:USERNAME"'
       - run: docker --version
