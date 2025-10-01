@@ -6,22 +6,26 @@ on:
 
 jobs:
   # 4.1 — TEST : exécuter "file" sur tous les JPG/JPEG
-  test-memory-2026:
+   test-memory-2026:
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - name: Run "file" on JPGs via Debian (inside Docker)
         shell: powershell
         run: |
-          # Chemin du repo (converti en / pour Docker)
-          $work = "${env:GITHUB_WORKSPACE}".Replace('\','/')
-          docker run --rm -v "$work:/work" -w /work debian:stable-slim bash -lc '
+          # Chemin du repo pour Docker (slashes Unix)
+          $work = $env:GITHUB_WORKSPACE -replace '\\','/'
+
+          # Lance Debian et exécute 'file' sur tous les JPG/JPEG
+          docker run --rm --mount "type=bind,src=$work,dst=/work" -w /work debian:stable-slim bash -lc @'
             set -e
-            apt-get update >/dev/null && apt-get install -y file >/dev/null
+            apt-get update >/dev/null
+            apt-get install -y file findutils >/dev/null
             count=$(find . -type f \( -iname "*.jpg" -o -iname "*.jpeg" \) | wc -l)
             if [ "$count" -eq 0 ]; then echo "Aucun .jpg/.jpeg"; exit 0; fi
             find . -type f \( -iname "*.jpg" -o -iname "*.jpeg" \) -print0 | xargs -0 file
-          '
+          '@
+
 
   # 4.2 — BUILD : construire l'image <username>/memory-2026:latest
   build-memory-2026:
