@@ -1,16 +1,45 @@
 name: memory-2026
+
 on:
   push:
     branches: [develop]
+
 jobs:
   # 4.1 — TEST : exécuter "file" sur tous les JPG/JPEG
   test-memory-2026:
-    name: Test Memory 2026
     runs-on: self-hosted
     steps:
-      - uses: actions/checkout@v3
-      - name: Test all JPEG files
-        run: file --mime-type ./html/**/*.jpg | grep -v "image/jpeg" && exit 1 || exit 0
+      - uses: actions/checkout@v4
+
+      # On écrit un script bash (LF uniquement) puis on l'exécute dans Debian
+      - name: Create test script (LF only)
+        shell: powershell
+        run: |
+          $script = @'
+#!/usr/bin/env bash
+set -euo pipefail
+export DEBIAN_FRONTEND=noninteractive
+apt-get update >/dev/null
+apt-get install -y file findutils >/dev/null
+shopt -s globstar nullglob
+files=(**/*.jpg **/*.jpeg)
+if [ ${#files[@]} -eq 0 ]; then
+  echo "Aucun .jpg/.jpeg"
+  exit 0
+fi
+for f in "${files[@]}"; do
+  file "$f"
+done
+'@
+          $script = $script -replace "`r",""        # enlève CR pour éviter ^M
+          $path = Join-Path $env:GITHUB_WORKSPACE "test_jpgs.sh"
+          [System.IO.File]::WriteAllText($path, $script, (New-Object System.Text.UTF8Encoding($false)))
+
+      - name: Run test script inside Debian (with 'file')
+        shell: powershell
+        run: |
+          $work = $env:GITHUB_WORKSPACE -replace '\\','/'
+          docker run --rm --mount "type=bind,src=$work,dst=/work" -w /work debian:stable-slim bash /work/test_jpgs.sh
 
   # 4.2 — BUILD : construire l'image <username>/memory-2026:latest
   build-memory-2026:
@@ -38,7 +67,7 @@ jobs:
         shell: powershell
         run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/memory-2026:latest
 
-  # 4.4 — DEPLOY : SSH vers TA machine, pull et run en 80:80
+  # 4.4 — DEPLOY : SSH vers ta machine, pull & run en 80:80
   deploy-memory-2026:
     runs-on: self-hosted
     needs: push-memory-2026
@@ -51,6 +80,7 @@ jobs:
           New-Item -ItemType Directory -Force "$HOME\.ssh" | Out-Null
           Set-Content -Path "$HOME\.ssh\id_rsa" -Value $env:SSH_PRIVATE_KEY -NoNewline
           icacls "$HOME\.ssh\id_rsa" /inheritance:r /grant:r "$env:USERNAME:(R)" | Out-Null
+
       - name: Deploy to target via SSH
         shell: powershell
         env:
@@ -58,7 +88,7 @@ jobs:
           SSH_HOST: ${{ secrets.SSH_HOST }}
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
         run: |
-          $image = "$env:DOCKERHUB_USERNAME/memory-2026:latest"
-          # attention à `$null` côté distant → on l'échappe
-          $remote = "docker pull $image; docker stop memory-2026 *> `$null; docker rm memory-2026 *> `$null; docker run -d --name memory-2026 -p 80:80 $image"
+          $image  = "$env:DOCKERHUB_USERNAME/memory-2026:latest"
+          # commande PowerShell robuste côté distant : supprime l'ancien conteneur s'il existe puis lance le nouveau
+          $remote = "docker pull $image; docker ps -aq -f name=^memory-2026$ | % { docker rm -f `$_ }; docker run -d --name memory-2026 -p 80:80 $image"
           ssh -o StrictHostKeyChecking=no "$env:SSH_USER@$env:SSH_HOST" "$remote"
