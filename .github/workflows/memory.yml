@@ -60,7 +60,7 @@ jobs:
       run: |
         if (-not "${{ secrets.DOCKERHUB_USERNAME }}") { throw "Secret DOCKERHUB_USERNAME vide ou manquant" }
         if (-not "${{ secrets.DOCKERHUB_TOKEN }}")    { throw "Secret DOCKERHUB_TOKEN vide ou manquant" }
-        Write-Host "Secrets présents ✅"
+        Write-Host "Secrets présents"
 
     - name: Docker login (robuste, via fichier ASCII)
       shell: powershell
