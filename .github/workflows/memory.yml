@@ -5,22 +5,22 @@ on:
     branches: [develop]
 
 jobs:
-   test-memory-2026:
+  # 4.1 — TEST : exécuter "file" sur tous les JPG/JPEG
+  test-memory-2026:
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - name: Run "file" on JPGs via Debian (inside Docker)
         shell: powershell
         run: |
-
+          # Chemin du repo pour Docker (slashes Unix)
           $work = $env:GITHUB_WORKSPACE -replace '\\','/'
 
-
+          # Script bash en UNE SEULE LIGNE (évite les CRLF côté Windows)
           $cmd = 'set -e; export DEBIAN_FRONTEND=noninteractive; apt-get update >/dev/null && apt-get install -y file findutils >/dev/null; count=$(find . -type f \( -iname "*.jpg" -o -iname "*.jpeg" \) | wc -l); if [ "$count" -eq 0 ]; then echo "Aucun .jpg/.jpeg"; exit 0; fi; find . -type f \( -iname "*.jpg" -o -iname "*.jpeg" \) -print0 | xargs -0 file'
 
           docker run --rm --mount "type=bind,src=$work,dst=/work" -w /work debian:stable-slim bash -lc $cmd
 
-          
   # 4.2 — BUILD : construire l'image <username>/memory-2026:latest
   build-memory-2026:
     runs-on: self-hosted
@@ -28,6 +28,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Docker build
+        shell: powershell
         run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/memory-2026:latest .
 
   # 4.3 — PUSH : pousser sur Docker Hub
@@ -36,13 +37,14 @@ jobs:
     needs: build-memory-2026
     steps:
       - name: Docker login
+        shell: powershell
         env:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-        shell: powershell
         run: |
           echo $env:DOCKERHUB_TOKEN | docker login -u $env:DOCKERHUB_USERNAME --password-stdin
       - name: Docker push
+        shell: powershell
         run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/memory-2026:latest
 
   # 4.4 — DEPLOY : SSH vers TA machine, pull et run en 80:80
