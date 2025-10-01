@@ -1,0 +1,16 @@
+name: verify-runner
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [develop]
+
+jobs:
+  ping:
+    runs-on: self-hosted
+    steps:
+      - name: Print env
+        shell: powershell
+        run: |
+          Write-Host "Runner OK"
+          Write-Host "User: $env:USERNAME"
